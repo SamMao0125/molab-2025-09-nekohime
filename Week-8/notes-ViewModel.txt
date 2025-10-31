@@ -1,0 +1,35 @@
+Refactoring to move all `@State` properties into an observable class. Creating a view model and updating `ContentView`.
+
+
+[2 tools called]
+
+Creating an observable view model class and refactoring `ContentView` to use it. Using the modern `@Observable` macro for SwiftUI.
+
+
+[1 tool called]
+
+Checking for lint errors:
+
+
+[1 tool called]
+
+Refactored `ContentView` to move all `@State` properties into an observable class.
+
+## Changes Made:
+
+1. Created `CatEarsViewModel` class using the `@Observable` macro to hold all state:
+   - All color, size, and rotation properties
+   - UI state (alerts, customization panel, recording)
+   - Methods moved into the view model (`capturePhoto`, `toggleRecording`, `resetToDefaults`, `setupAlertNotifications`)
+
+2. Updated `ContentView` to use the view model:
+   - Single `@State` property for the view model instance
+   - All bindings updated to use `viewModel.propertyName`
+   - Methods called through the view model
+
+3. Improved memory management:
+   - Added `[weak self]` to the notification observer closure to prevent retain cycles
+
+The code is cleaner and follows MVVM, separating view logic from state management. The `@Observable` macro automatically handles change tracking for SwiftUI views.
+
+No lint errors found. The refactoring is complete and ready to use.
