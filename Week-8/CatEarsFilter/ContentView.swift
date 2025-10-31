@@ -4,99 +4,20 @@ import SceneKit
 import Photos
 import AVFoundation
 
-// MARK: - EarPreset Model
-struct EarPreset: Codable, Identifiable {
-    var id = UUID()
-    var name: String
-    var outerEarColorComponents: [Double]
-    var innerEarColorComponents: [Double]
-    var earHeight: Double
-    var earWidth: Double
-    var earThickness: Double
-    var rotationX: Double
-    var rotationY: Double
-    var rotationZ: Double
-    
-    init(name: String, outerColor: Color, innerColor: Color, height: Double, width: Double, thickness: Double, rotX: Double, rotY: Double, rotZ: Double) {
-        self.name = name
-        self.outerEarColorComponents = outerColor.components
-        self.innerEarColorComponents = innerColor.components
-        self.earHeight = height
-        self.earWidth = width
-        self.earThickness = thickness
-        self.rotationX = rotX
-        self.rotationY = rotY
-        self.rotationZ = rotZ
-    }
-    
-    var outerColor: Color {
-        Color(red: outerEarColorComponents[0], green: outerEarColorComponents[1], blue: outerEarColorComponents[2], opacity: outerEarColorComponents[3])
-    }
-    
-    var innerColor: Color {
-        Color(red: innerEarColorComponents[0], green: innerEarColorComponents[1], blue: innerEarColorComponents[2], opacity: innerEarColorComponents[3])
-    }
-}
-
-// MARK: - Preset Manager
-class PresetManager: ObservableObject {
-    @Published var presets: [EarPreset] = []
-    
-    private let presetsKey = "savedEarPresets"
-    
-    init() {
-        loadPresets()
-    }
-    
-    func savePreset(_ preset: EarPreset) {
-        presets.append(preset)
-        saveToUserDefaults()
-    }
-    
-    func deletePreset(at index: Int) {
-        presets.remove(at: index)
-        saveToUserDefaults()
-    }
-    
-    func deletePreset(id: UUID) {
-        presets.removeAll { $0.id == id }
-        saveToUserDefaults()
-    }
-    
-    private func saveToUserDefaults() {
-        if let encoded = try? JSONEncoder().encode(presets) {
-            UserDefaults.standard.set(encoded, forKey: presetsKey)
-        }
-    }
-    
-    private func loadPresets() {
-        if let data = UserDefaults.standard.data(forKey: presetsKey),
-           let decoded = try? JSONDecoder().decode([EarPreset].self, from: data) {
-            presets = decoded
-        }
-    }
-}
-
 struct ContentView: View {
     @State private var outerEarColor: Color = .systemPink
     @State private var innerEarColor: Color = .pink
     @State private var earHeight: Double = 0.06
     @State private var earWidth: Double = 0.025
     @State private var earThickness: Double = 0.005
-    @State private var rotationX: Double = 0.0
-    @State private var rotationY: Double = 0.0
-    @State private var rotationZ: Double = 30.0
+    @State private var rotationX: Double = 0.0  // Pitch (forward/backward tilt)
+    @State private var rotationY: Double = 0.0  // Yaw (left/right rotation)
+    @State private var rotationZ: Double = 30.0 // Roll (outward tilt) - default 30 degrees
     @State private var showingAlert = false
     @State private var showCustomization = false
     @State private var isRecording = false
     @State private var alertMessage = ""
     @State private var showSuccessAlert = false
-    @State private var showFlash = false
-    @State private var showPresetManager = false
-    @State private var showSavePresetDialog = false
-    @State private var newPresetName = ""
-    
-    @StateObject private var presetManager = PresetManager()
     
     var body: some View {
         ZStack {
@@ -113,34 +34,14 @@ struct ContentView: View {
             )
             .edgesIgnoringSafeArea(.all)
             
-            // Flash overlay
-            if showFlash {
-                Color.white
-                    .edgesIgnoringSafeArea(.all)
-                    .transition(.opacity)
-            }
-            
             VStack {
                 // Camera controls at the top
                 HStack {
-                    // Presets button
-                    Button(action: {
-                        showPresetManager = true
-                    }) {
-                        Image(systemName: "star.fill")
-                            .font(.system(size: 24))
-                            .foregroundColor(.white)
-                            .frame(width: 60, height: 60)
-                            .background(Circle().fill(Color.purple.opacity(0.8)))
-                            .shadow(radius: 5)
-                    }
-                    .padding(.leading, 20)
-                    
                     Spacer()
                     
                     // Photo button
                     Button(action: {
-                        capturePhotoWithFlash()
+                        capturePhoto()
                     }) {
                         Image(systemName: "camera.fill")
                             .font(.system(size: 24))
@@ -191,22 +92,6 @@ struct ContentView: View {
                     if showCustomization {
                         ScrollView {
                             VStack(spacing: 20) {
-                                // Save Preset Button
-                                Button(action: {
-                                    showSavePresetDialog = true
-                                }) {
-                                    HStack {
-                                        Image(systemName: "square.and.arrow.down")
-                                        Text("Save Current as Preset")
-                                    }
-                                    .font(.subheadline)
-                                    .foregroundColor(.white)
-                                    .padding(.horizontal, 16)
-                                    .padding(.vertical, 10)
-                                    .background(Color.green.opacity(0.7))
-                                    .cornerRadius(10)
-                                }
-                                
                                 // Color Section
                                 VStack(alignment: .leading, spacing: 12) {
                                     Text("Colors")
@@ -245,6 +130,7 @@ struct ContentView: View {
                                         .font(.headline)
                                         .foregroundColor(.white)
                                     
+                                    // Height Slider
                                     VStack(alignment: .leading, spacing: 4) {
                                         Text("Height: \(String(format: "%.3f", earHeight))")
                                             .font(.caption)
@@ -253,6 +139,7 @@ struct ContentView: View {
                                             .accentColor(.blue)
                                     }
                                     
+                                    // Width Slider
                                     VStack(alignment: .leading, spacing: 4) {
                                         Text("Width: \(String(format: "%.3f", earWidth))")
                                             .font(.caption)
@@ -261,6 +148,7 @@ struct ContentView: View {
                                             .accentColor(.blue)
                                     }
                                     
+                                    // Thickness Slider
                                     VStack(alignment: .leading, spacing: 4) {
                                         Text("Thickness: \(String(format: "%.3f", earThickness))")
                                             .font(.caption)
@@ -279,6 +167,7 @@ struct ContentView: View {
                                         .font(.headline)
                                         .foregroundColor(.white)
                                     
+                                    // X Rotation (Pitch - forward/backward)
                                     VStack(alignment: .leading, spacing: 4) {
                                         Text("Tilt Forward/Back: \(String(format: "%.0f°", rotationX))")
                                             .font(.caption)
@@ -287,6 +176,7 @@ struct ContentView: View {
                                             .accentColor(.green)
                                     }
                                     
+                                    // Y Rotation (Yaw - left/right)
                                     VStack(alignment: .leading, spacing: 4) {
                                         Text("Rotate In/Out: \(String(format: "%.0f°", rotationY))")
                                             .font(.caption)
@@ -295,6 +185,7 @@ struct ContentView: View {
                                             .accentColor(.green)
                                     }
                                     
+                                    // Z Rotation (Roll - outward tilt)
                                     VStack(alignment: .leading, spacing: 4) {
                                         Text("Outward Tilt: \(String(format: "%.0f°", rotationZ))")
                                             .font(.caption)
@@ -333,24 +224,6 @@ struct ContentView: View {
                 .padding(.bottom, 40)
             }
         }
-        .sheet(isPresented: $showPresetManager) {
-            PresetManagerView(
-                presetManager: presetManager,
-                onLoadPreset: loadPreset,
-                onClose: { showPresetManager = false }
-            )
-        }
-        .alert("Save Preset", isPresented: $showSavePresetDialog) {
-            TextField("Preset Name", text: $newPresetName)
-            Button("Cancel", role: .cancel) {
-                newPresetName = ""
-            }
-            Button("Save") {
-                saveCurrentPreset()
-            }
-        } message: {
-            Text("Enter a name for this ear configuration")
-        }
         .alert("Device Not Supported", isPresented: $showingAlert) {
             Button("OK", role: .cancel) { }
         } message: {
@@ -380,72 +253,22 @@ struct ContentView: View {
         }
     }
     
-    private func capturePhotoWithFlash() {
-        // Show flash
-        withAnimation(.easeInOut(duration: 0.1)) {
-            showFlash = true
-        }
-        
-        // Hide flash and capture photo
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            withAnimation(.easeInOut(duration: 0.2)) {
-                showFlash = false
-            }
-            capturePhoto()
-        }
-    }
     
     private func capturePhoto() {
+        // This will be handled by the coordinator through a notification
         NotificationCenter.default.post(name: NSNotification.Name("CapturePhoto"), object: nil)
     }
     
     private func toggleRecording() {
         if isRecording {
+            // Stop recording
             NotificationCenter.default.post(name: NSNotification.Name("StopRecording"), object: nil)
             isRecording = false
         } else {
+            // Start recording
             NotificationCenter.default.post(name: NSNotification.Name("StartRecording"), object: nil)
             isRecording = true
         }
-    }
-    
-    private func saveCurrentPreset() {
-        guard !newPresetName.isEmpty else { return }
-        
-        let preset = EarPreset(
-            name: newPresetName,
-            outerColor: outerEarColor,
-            innerColor: innerEarColor,
-            height: earHeight,
-            width: earWidth,
-            thickness: earThickness,
-            rotX: rotationX,
-            rotY: rotationY,
-            rotZ: rotationZ
-        )
-        
-        presetManager.savePreset(preset)
-        newPresetName = ""
-        
-        alertMessage = "Preset saved successfully!"
-        showSuccessAlert = true
-    }
-    
-    private func loadPreset(_ preset: EarPreset) {
-        withAnimation {
-            outerEarColor = preset.outerColor
-            innerEarColor = preset.innerColor
-            earHeight = preset.earHeight
-            earWidth = preset.earWidth
-            earThickness = preset.earThickness
-            rotationX = preset.rotationX
-            rotationY = preset.rotationY
-            rotationZ = preset.rotationZ
-        }
-        
-        showPresetManager = false
-        alertMessage = "Preset '\(preset.name)' loaded!"
-        showSuccessAlert = true
     }
     
     private func resetToDefaults() {
@@ -459,120 +282,6 @@ struct ContentView: View {
             rotationY = 0.0
             rotationZ = 30.0
         }
-    }
-}
-
-// MARK: - Preset Manager View
-struct PresetManagerView: View {
-    @ObservedObject var presetManager: PresetManager
-    var onLoadPreset: (EarPreset) -> Void
-    var onClose: () -> Void
-    
-    var body: some View {
-        NavigationView {
-            ZStack {
-                Color.black.opacity(0.9)
-                    .edgesIgnoringSafeArea(.all)
-                
-                if presetManager.presets.isEmpty {
-                    VStack(spacing: 20) {
-                        Image(systemName: "star.slash")
-                            .font(.system(size: 60))
-                            .foregroundColor(.gray)
-                        Text("No saved presets")
-                            .font(.title2)
-                            .foregroundColor(.gray)
-                        Text("Customize your ears and save them as presets!")
-                            .font(.body)
-                            .foregroundColor(.gray)
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal, 40)
-                    }
-                } else {
-                    List {
-                        ForEach(presetManager.presets) { preset in
-                            PresetRow(preset: preset, onLoad: {
-                                onLoadPreset(preset)
-                            })
-                            .listRowBackground(Color.white.opacity(0.1))
-                        }
-                        .onDelete { indexSet in
-                            indexSet.forEach { index in
-                                presetManager.deletePreset(at: index)
-                            }
-                        }
-                    }
-                    .scrollContentBackground(.hidden)
-                }
-            }
-            .navigationTitle("Saved Presets")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") {
-                        onClose()
-                    }
-                    .foregroundColor(.blue)
-                }
-            }
-        }
-    }
-}
-
-// MARK: - Preset Row
-struct PresetRow: View {
-    let preset: EarPreset
-    let onLoad: () -> Void
-    
-    var body: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 8) {
-                Text(preset.name)
-                    .font(.headline)
-                    .foregroundColor(.white)
-                
-                HStack(spacing: 16) {
-                    HStack(spacing: 4) {
-                        Circle()
-                            .fill(preset.outerColor)
-                            .frame(width: 20, height: 20)
-                            .overlay(
-                                Circle()
-                                    .stroke(Color.white, lineWidth: 1)
-                            )
-                        Text("Outer")
-                            .font(.caption)
-                            .foregroundColor(.gray)
-                    }
-                    
-                    HStack(spacing: 4) {
-                        Circle()
-                            .fill(preset.innerColor)
-                            .frame(width: 20, height: 20)
-                            .overlay(
-                                Circle()
-                                    .stroke(Color.white, lineWidth: 1)
-                            )
-                        Text("Inner")
-                            .font(.caption)
-                            .foregroundColor(.gray)
-                    }
-                }
-            }
-            
-            Spacer()
-            
-            Button(action: onLoad) {
-                Text("Load")
-                    .font(.subheadline)
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
-                    .background(Color.blue)
-                    .cornerRadius(8)
-            }
-        }
-        .padding(.vertical, 8)
     }
 }
 
@@ -590,6 +299,7 @@ struct ARFaceTrackingView: UIViewRepresentable {
     func makeUIView(context: Context) -> ARSCNView {
         let sceneView = ARSCNView()
         
+        // Check if face tracking is supported
         guard ARFaceTrackingConfiguration.isSupported else {
             return sceneView
         }
@@ -597,8 +307,10 @@ struct ARFaceTrackingView: UIViewRepresentable {
         sceneView.delegate = context.coordinator
         sceneView.automaticallyUpdatesLighting = true
         
+        // Store reference to sceneView in coordinator
         context.coordinator.sceneView = sceneView
         
+        // Start face tracking session
         let configuration = ARFaceTrackingConfiguration()
         configuration.isLightEstimationEnabled = true
         sceneView.session.run(configuration)
@@ -607,6 +319,7 @@ struct ARFaceTrackingView: UIViewRepresentable {
     }
     
     func updateUIView(_ uiView: ARSCNView, context: Context) {
+        // Update all customization parameters
         context.coordinator.updateEarParameters(
             outerColor: uiColor(from: outerEarColor),
             innerColor: uiColor(from: innerEarColor),
@@ -623,6 +336,7 @@ struct ARFaceTrackingView: UIViewRepresentable {
         Coordinator()
     }
     
+    // Convert SwiftUI Color to UIColor
     private func uiColor(from color: Color) -> UIColor {
         let components = UIColor(color).cgColor.components ?? [1, 0, 0, 1]
         return UIColor(
@@ -702,51 +416,66 @@ struct ARFaceTrackingView: UIViewRepresentable {
             stopRecording()
         }
         
+        // Called when a face anchor is added
         func renderer(_ renderer: SCNSceneRenderer, didAdd node: SCNNode, for anchor: ARAnchor) {
             guard let faceAnchor = anchor as? ARFaceAnchor else { return }
+            
+            // Create and add cat ears
             addCatEars(to: node, faceAnchor: faceAnchor)
         }
         
+        // Called when face anchor updates
         func renderer(_ renderer: SCNSceneRenderer, didUpdate node: SCNNode, for anchor: ARAnchor) {
             guard let faceAnchor = anchor as? ARFaceAnchor else { return }
+            
+            // Update ear positions if needed
             updateEarPositions(node: node, faceAnchor: faceAnchor)
         }
         
         private func addCatEars(to node: SCNNode, faceAnchor: ARFaceAnchor) {
+            // Create left ear
             leftEarNode = createCatEar()
             if let leftEar = leftEarNode {
+                // Position on left side of head
                 leftEar.position = SCNVector3(-0.08, 0.12, 0.02)
+                // Apply rotations: X same, Y mirrored, Z mirrored for symmetry
                 leftEar.eulerAngles = SCNVector3(
-                    degreesToRadians(currentRotationX),
-                    degreesToRadians(currentRotationY),
-                    degreesToRadians(currentRotationZ)
+                    degreesToRadians(currentRotationX),           // X: pitch (same for both)
+                    degreesToRadians(currentRotationY),           // Y: yaw (mirrored)
+                    degreesToRadians(currentRotationZ)            // Z: roll (mirrored)
                 )
                 node.addChildNode(leftEar)
             }
             
+            // Create right ear
             rightEarNode = createCatEar()
             if let rightEar = rightEarNode {
+                // Position on right side of head
                 rightEar.position = SCNVector3(0.08, 0.12, 0.02)
+                // Apply rotations: X same, Y mirrored, Z mirrored for symmetry
                 rightEar.eulerAngles = SCNVector3(
-                    degreesToRadians(currentRotationX),
-                    -degreesToRadians(currentRotationY),
-                    -degreesToRadians(currentRotationZ)
+                    degreesToRadians(currentRotationX),           // X: pitch (same for both)
+                    -degreesToRadians(currentRotationY),          // Y: yaw (mirrored)
+                    -degreesToRadians(currentRotationZ)           // Z: roll (mirrored)
                 )
                 node.addChildNode(rightEar)
             }
         }
         
+        // Helper function to convert degrees to radians
         private func degreesToRadians(_ degrees: CGFloat) -> Float {
             return Float(degrees * .pi / 180.0)
         }
         
         private func createCatEar() -> SCNNode {
+            // Create a cone for the ear shape using current parameters
             let earGeometry = SCNCone(
                 topRadius: currentThickness,
                 bottomRadius: currentWidth,
                 height: currentHeight
             )
             
+            // Apply material with current outer color
             let material = SCNMaterial()
             material.diffuse.contents = currentOuterColor
             material.lightingModel = .physicallyBased
@@ -755,6 +484,7 @@ struct ARFaceTrackingView: UIViewRepresentable {
             
             let earNode = SCNNode(geometry: earGeometry)
             
+            // Add inner ear (pink/lighter part) - scaled proportionally
             let innerEar = SCNCone(
                 topRadius: currentThickness * 0.6,
                 bottomRadius: currentWidth * 0.6,
@@ -773,10 +503,12 @@ struct ARFaceTrackingView: UIViewRepresentable {
         }
         
         private func updateEarPositions(node: SCNNode, faceAnchor: ARFaceAnchor) {
-            // Ears follow face automatically
+            // Ears remain relative to the face anchor, so they automatically follow the face
+            // This method can be used for more advanced animations based on blend shapes
         }
         
         func updateEarParameters(outerColor: UIColor, innerColor: UIColor, height: CGFloat, width: CGFloat, thickness: CGFloat, rotX: CGFloat, rotY: CGFloat, rotZ: CGFloat) {
+            // Check if parameters have changed
             let parametersChanged =
                 height != currentHeight ||
                 width != currentWidth ||
@@ -789,6 +521,7 @@ struct ARFaceTrackingView: UIViewRepresentable {
                 outerColor != currentOuterColor ||
                 innerColor != currentInnerColor
             
+            // Update stored values
             currentOuterColor = outerColor
             currentInnerColor = innerColor
             currentHeight = height
@@ -798,9 +531,11 @@ struct ARFaceTrackingView: UIViewRepresentable {
             currentRotationY = rotY
             currentRotationZ = rotZ
             
+            // If dimensions or rotations changed, recreate the ears
             if parametersChanged {
                 recreateEars()
             } else if colorsChanged {
+                // Just update colors without recreating geometry
                 updateEarColors()
             }
         }
@@ -808,9 +543,11 @@ struct ARFaceTrackingView: UIViewRepresentable {
         private func recreateEars() {
             guard let parent = leftEarNode?.parent else { return }
             
+            // Remove old ears
             leftEarNode?.removeFromParentNode()
             rightEarNode?.removeFromParentNode()
             
+            // Create new left ear
             leftEarNode = createCatEar()
             if let leftEar = leftEarNode {
                 leftEar.position = SCNVector3(-0.08, 0.12, 0.02)
@@ -822,6 +559,7 @@ struct ARFaceTrackingView: UIViewRepresentable {
                 parent.addChildNode(leftEar)
             }
             
+            // Create new right ear
             rightEarNode = createCatEar()
             if let rightEar = rightEarNode {
                 rightEar.position = SCNVector3(0.08, 0.12, 0.02)
@@ -835,6 +573,7 @@ struct ARFaceTrackingView: UIViewRepresentable {
         }
         
         private func updateEarColors() {
+            // Update outer ear colors
             if let leftEar = leftEarNode?.geometry as? SCNCone {
                 leftEar.materials.first?.diffuse.contents = currentOuterColor
             }
@@ -843,6 +582,7 @@ struct ARFaceTrackingView: UIViewRepresentable {
                 rightEar.materials.first?.diffuse.contents = currentOuterColor
             }
             
+            // Update inner ear colors
             if let leftInner = leftEarNode?.childNodes.first?.geometry as? SCNCone {
                 leftInner.materials.first?.diffuse.contents = currentInnerColor
             }
@@ -857,9 +597,12 @@ struct ARFaceTrackingView: UIViewRepresentable {
         private func capturePhoto() {
             guard let sceneView = sceneView else { return }
             
+            // Ensure we're on the main thread for UI operations
             DispatchQueue.main.async {
+                // Take a snapshot of the AR scene
                 let image = sceneView.snapshot()
                 
+                // Request permission and save to photo library
                 PHPhotoLibrary.requestAuthorization(for: .addOnly) { status in
                     DispatchQueue.main.async {
                         switch status {
@@ -898,6 +641,7 @@ struct ARFaceTrackingView: UIViewRepresentable {
                 return
             }
             
+            // Create temporary file URL for video
             let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
             videoURL = documentsPath.appendingPathComponent("temp_video_\(UUID().uuidString).mp4")
             
@@ -906,23 +650,29 @@ struct ARFaceTrackingView: UIViewRepresentable {
                 return
             }
             
+            // Remove existing file if it exists
             try? FileManager.default.removeItem(at: videoURL)
             
             do {
+                // Create video writer
                 videoWriter = try AVAssetWriter(outputURL: videoURL, fileType: .mp4)
                 
+                // Get the scene view bounds
                 let width = Int(sceneView.bounds.width)
                 let height = Int(sceneView.bounds.height)
                 
+                // Configure video settings
                 let videoSettings: [String: Any] = [
                     AVVideoCodecKey: AVVideoCodecType.h264,
                     AVVideoWidthKey: width,
                     AVVideoHeightKey: height
                 ]
                 
+                // Create video writer input
                 videoWriterInput = AVAssetWriterInput(mediaType: .video, outputSettings: videoSettings)
                 videoWriterInput?.expectsMediaDataInRealTime = true
                 
+                // Create pixel buffer adaptor
                 let sourcePixelBufferAttributes: [String: Any] = [
                     kCVPixelBufferPixelFormatTypeKey as String: Int(kCVPixelFormatType_32ARGB),
                     kCVPixelBufferWidthKey as String: width,
@@ -934,11 +684,13 @@ struct ARFaceTrackingView: UIViewRepresentable {
                     sourcePixelBufferAttributes: sourcePixelBufferAttributes
                 )
                 
+                // Add input to writer
                 if let videoWriterInput = videoWriterInput,
                    videoWriter?.canAdd(videoWriterInput) == true {
                     videoWriter?.add(videoWriterInput)
                 }
                 
+                // Start writing
                 videoWriter?.startWriting()
                 videoWriter?.startSession(atSourceTime: .zero)
                 
@@ -946,6 +698,7 @@ struct ARFaceTrackingView: UIViewRepresentable {
                 videoStartTime = Date()
                 lastFrameTime = nil
                 
+                // Start capturing frames
                 setupDisplayLink()
                 
             } catch {
@@ -956,7 +709,8 @@ struct ARFaceTrackingView: UIViewRepresentable {
         
         private func setupDisplayLink() {
             displayLink = CADisplayLink(target: self, selector: #selector(captureFrame))
-            displayLink?.preferredFramesPerSecond = 0
+            // Let it run at screen refresh rate, we'll limit to target FPS in captureFrame
+            displayLink?.preferredFramesPerSecond = 0 // 0 = use screen refresh rate
             displayLink?.add(to: .main, forMode: .common)
         }
         
@@ -972,18 +726,22 @@ struct ARFaceTrackingView: UIViewRepresentable {
             
             let now = Date()
             
+            // Frame rate limiting: only capture if enough time has passed
             if let lastFrame = lastFrameTime {
                 let timeSinceLastFrame = now.timeIntervalSince(lastFrame)
                 let minimumFrameInterval = 1.0 / targetFrameRate
                 
                 if timeSinceLastFrame < minimumFrameInterval {
-                    return
+                    return // Skip this frame, too soon
                 }
             }
             
+            // Capture the current frame as an image
             let image = sceneView.snapshot()
             
+            // Convert UIImage to pixel buffer
             if let pixelBuffer = pixelBuffer(from: image) {
+                // Calculate actual elapsed time since recording started
                 let elapsedTime = now.timeIntervalSince(startTime)
                 let frameTime = CMTime(seconds: elapsedTime, preferredTimescale: 600)
                 
@@ -1131,17 +889,6 @@ struct ARFaceTrackingView: UIViewRepresentable {
 extension Color {
     static var systemPink: Color {
         Color(UIColor.systemPink)
-    }
-    
-    var components: [Double] {
-        let uiColor = UIColor(self)
-        var red: CGFloat = 0
-        var green: CGFloat = 0
-        var blue: CGFloat = 0
-        var alpha: CGFloat = 0
-        
-        uiColor.getRed(&red, green: &green, blue: &blue, alpha: &alpha)
-        return [Double(red), Double(green), Double(blue), Double(alpha)]
     }
 }
 
