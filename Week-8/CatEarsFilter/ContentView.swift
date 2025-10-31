@@ -75,20 +75,8 @@ struct ContentView: View {
     var body: some View {
         ZStack {
             // AR View for face tracking
-            ARFaceTrackingView(
-                outerEarColor: $viewModel.outerEarColor,
-                innerEarColor: $viewModel.innerEarColor,
-                earHeight: $viewModel.earHeight,
-                earWidth: $viewModel.earWidth,
-                earThickness: $viewModel.earThickness,
-                rotationX: $viewModel.rotationX,
-                rotationY: $viewModel.rotationY,
-                rotationZ: $viewModel.rotationZ,
-                whiskerColor: $viewModel.whiskerColor,
-                whiskerLength: $viewModel.whiskerLength,
-                whiskerThickness: $viewModel.whiskerThickness
-            )
-            .edgesIgnoringSafeArea(.all)
+            ARFaceTrackingView(viewModel: viewModel)
+                .edgesIgnoringSafeArea(.all)
             
             VStack {
                 CameraControlsView(
@@ -99,21 +87,7 @@ struct ContentView: View {
                 
                 Spacer()
                 
-                CustomizationPanelView(
-                    showCustomization: $viewModel.showCustomization,
-                    outerEarColor: $viewModel.outerEarColor,
-                    innerEarColor: $viewModel.innerEarColor,
-                    earHeight: $viewModel.earHeight,
-                    earWidth: $viewModel.earWidth,
-                    earThickness: $viewModel.earThickness,
-                    rotationX: $viewModel.rotationX,
-                    rotationY: $viewModel.rotationY,
-                    rotationZ: $viewModel.rotationZ,
-                    whiskerColor: $viewModel.whiskerColor,
-                    whiskerLength: $viewModel.whiskerLength,
-                    whiskerThickness: $viewModel.whiskerThickness,
-                    onReset: viewModel.resetToDefaults
-                )
+                CustomizationPanelView(viewModel: viewModel)
             }
         }
         .alert("Device Not Supported", isPresented: $viewModel.showingAlert) {

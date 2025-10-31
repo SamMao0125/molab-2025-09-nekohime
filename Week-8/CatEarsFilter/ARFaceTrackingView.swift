@@ -5,17 +5,7 @@ import UIKit
 
 // MARK: - ARFaceTrackingView
 struct ARFaceTrackingView: UIViewRepresentable {
-    @Binding var outerEarColor: Color
-    @Binding var innerEarColor: Color
-    @Binding var earHeight: Double
-    @Binding var earWidth: Double
-    @Binding var earThickness: Double
-    @Binding var rotationX: Double
-    @Binding var rotationY: Double
-    @Binding var rotationZ: Double
-    @Binding var whiskerColor: Color
-    @Binding var whiskerLength: Double
-    @Binding var whiskerThickness: Double
+    let viewModel: CatEarsViewModel
     
     func makeUIView(context: Context) -> ARSCNView {
         let sceneView = ARSCNView()
@@ -42,17 +32,17 @@ struct ARFaceTrackingView: UIViewRepresentable {
     func updateUIView(_ uiView: ARSCNView, context: Context) {
         // Update all customization parameters
         context.coordinator.updateEarParameters(
-            outerColor: uiColor(from: outerEarColor),
-            innerColor: uiColor(from: innerEarColor),
-            height: CGFloat(earHeight),
-            width: CGFloat(earWidth),
-            thickness: CGFloat(earThickness),
-            rotX: CGFloat(rotationX),
-            rotY: CGFloat(rotationY),
-            rotZ: CGFloat(rotationZ),
-            whiskerColor: uiColor(from: whiskerColor),
-            whiskerLength: CGFloat(whiskerLength),
-            whiskerThickness: CGFloat(whiskerThickness)
+            outerColor: uiColor(from: viewModel.outerEarColor),
+            innerColor: uiColor(from: viewModel.innerEarColor),
+            height: CGFloat(viewModel.earHeight),
+            width: CGFloat(viewModel.earWidth),
+            thickness: CGFloat(viewModel.earThickness),
+            rotX: CGFloat(viewModel.rotationX),
+            rotY: CGFloat(viewModel.rotationY),
+            rotZ: CGFloat(viewModel.rotationZ),
+            whiskerColor: uiColor(from: viewModel.whiskerColor),
+            whiskerLength: CGFloat(viewModel.whiskerLength),
+            whiskerThickness: CGFloat(viewModel.whiskerThickness)
         )
     }
     

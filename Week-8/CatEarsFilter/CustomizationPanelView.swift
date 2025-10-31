@@ -2,31 +2,19 @@ import SwiftUI
 
 // MARK: - CustomizationPanelView
 struct CustomizationPanelView: View {
-    @Binding var showCustomization: Bool
-    @Binding var outerEarColor: Color
-    @Binding var innerEarColor: Color
-    @Binding var earHeight: Double
-    @Binding var earWidth: Double
-    @Binding var earThickness: Double
-    @Binding var rotationX: Double
-    @Binding var rotationY: Double
-    @Binding var rotationZ: Double
-    @Binding var whiskerColor: Color
-    @Binding var whiskerLength: Double
-    @Binding var whiskerThickness: Double
-    let onReset: () -> Void
+    let viewModel: CatEarsViewModel
     
     var body: some View {
         VStack(spacing: 16) {
             // Toggle button
             Button(action: {
                 withAnimation {
-                    showCustomization.toggle()
+                    viewModel.showCustomization.toggle()
                 }
             }) {
                 HStack {
                     Image(systemName: "slider.horizontal.3")
-                    Text(showCustomization ? "Hide Controls" : "Customize Ears")
+                    Text(viewModel.showCustomization ? "Hide Controls" : "Customize Ears")
                 }
                 .font(.headline)
                 .foregroundColor(.white)
@@ -36,34 +24,67 @@ struct CustomizationPanelView: View {
                 .cornerRadius(25)
             }
             
-            if showCustomization {
+            if viewModel.showCustomization {
                 ScrollView {
                     VStack(spacing: 20) {
                         ColorSectionView(
-                            outerEarColor: $outerEarColor,
-                            innerEarColor: $innerEarColor
+                            outerEarColor: Binding(
+                                get: { viewModel.outerEarColor },
+                                set: { viewModel.outerEarColor = $0 }
+                            ),
+                            innerEarColor: Binding(
+                                get: { viewModel.innerEarColor },
+                                set: { viewModel.innerEarColor = $0 }
+                            )
                         )
                         
                         SizeShapeSectionView(
-                            earHeight: $earHeight,
-                            earWidth: $earWidth,
-                            earThickness: $earThickness
+                            earHeight: Binding(
+                                get: { viewModel.earHeight },
+                                set: { viewModel.earHeight = $0 }
+                            ),
+                            earWidth: Binding(
+                                get: { viewModel.earWidth },
+                                set: { viewModel.earWidth = $0 }
+                            ),
+                            earThickness: Binding(
+                                get: { viewModel.earThickness },
+                                set: { viewModel.earThickness = $0 }
+                            )
                         )
                         
                         RotationSectionView(
-                            rotationX: $rotationX,
-                            rotationY: $rotationY,
-                            rotationZ: $rotationZ
+                            rotationX: Binding(
+                                get: { viewModel.rotationX },
+                                set: { viewModel.rotationX = $0 }
+                            ),
+                            rotationY: Binding(
+                                get: { viewModel.rotationY },
+                                set: { viewModel.rotationY = $0 }
+                            ),
+                            rotationZ: Binding(
+                                get: { viewModel.rotationZ },
+                                set: { viewModel.rotationZ = $0 }
+                            )
                         )
                         
                         WhiskerSectionView(
-                            whiskerColor: $whiskerColor,
-                            whiskerLength: $whiskerLength,
-                            whiskerThickness: $whiskerThickness
+                            whiskerColor: Binding(
+                                get: { viewModel.whiskerColor },
+                                set: { viewModel.whiskerColor = $0 }
+                            ),
+                            whiskerLength: Binding(
+                                get: { viewModel.whiskerLength },
+                                set: { viewModel.whiskerLength = $0 }
+                            ),
+                            whiskerThickness: Binding(
+                                get: { viewModel.whiskerThickness },
+                                set: { viewModel.whiskerThickness = $0 }
+                            )
                         )
                         
                         // Reset Button
-                        Button(action: onReset) {
+                        Button(action: viewModel.resetToDefaults) {
                             Text("Reset to Defaults")
                                 .font(.subheadline)
                                 .foregroundColor(.white)

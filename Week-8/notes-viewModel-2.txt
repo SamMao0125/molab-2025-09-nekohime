@@ -1,0 +1,53 @@
+# --
+refactor ARFaceTrackingView and CustomizationPanelView to take viewModel
+# --
+Examining the relevant files to understand the current structure.
+
+
+[5 tools called]
+
+Checking `EarCustomizationSections.swift` for structure:
+
+
+[1 tool called]
+
+Refactoring `ARFaceTrackingView` and `CustomizationPanelView` to accept a viewModel instead of individual bindings. Creating a todo list:
+
+
+[8 tools called]
+
+Checking for lint errors and verifying the refactoring:
+
+
+[1 tool called]
+
+No lint errors. Ensuring `ARFaceTrackingView` reacts to viewModel changes. Since `UIViewRepresentable` doesn't automatically observe `@Observable`, verifying the implementation is correct:
+
+
+[1 tool called]
+
+Refactoring complete. Both views now accept a `viewModel` parameter. Summary:
+
+
+[1 tool called]
+
+Refactoring complete. Changes:
+
+## Refactoring Summary
+
+### 1. **ARFaceTrackingView**
+- Replaced multiple `@Binding` parameters with a single `viewModel: CatEarsViewModel` parameter
+- Updated `updateUIView` to read properties directly from the viewModel
+
+### 2. **CustomizationPanelView**
+- Replaced multiple `@Binding` parameters and the `onReset` closure with a single `viewModel: CatEarsViewModel` parameter
+- Created `Binding` instances from viewModel properties for the section views (which still use `@Binding`)
+- Updated references to use `viewModel.showCustomization` and `viewModel.resetToDefaults()`
+
+### 3. **ContentView**
+- Updated to pass the `viewModel` directly to both views
+- Simplified from multiple bindings to `ARFaceTrackingView(viewModel: viewModel)` and `CustomizationPanelView(viewModel: viewModel)`
+
+The code now follows MVVM more closely: both views receive the viewModel instead of individual bindings, improving maintainability and reducing parameter count. Since `CatEarsViewModel` uses the `@Observable` macro, SwiftUI tracks changes and updates the views when viewModel properties change.
+
+No lint errors detected. The refactoring is ready to use.
