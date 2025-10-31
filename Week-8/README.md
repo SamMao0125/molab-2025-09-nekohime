@@ -1,0 +1,4 @@
+#  Progress 
+
+total 8 hours ~ ish. This time I broke the inputs and requests into little managable parts. I find that it is important to streamline visoin first before and the most crucial version to be the first version. I have each input asking for managable chunks, and slowly integrated them into the project. The biggest challenges are: when the camera function was first added, it would do screenshot and screen recording, meaning that the settings would be forced to show. I needed to change it to front camera instead, allowing for standalone recording. Moreover, when the video recording function was first added, there was an issue with delay of time calculation, causing a 10 second recording to add a 40 hour long video in photos. I also had a huge issue with info.plist, since when I entered the key and value wrong, I accidentily deleted it, and I had to restart organizing them. 
+
