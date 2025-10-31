@@ -1,3 +1,7 @@
+# --
+@ContentView.swift move all @State into an obserable class data model
+# --
+
 Refactoring to move all `@State` properties into an observable class. Creating a view model and updating `ContentView`.
 
 

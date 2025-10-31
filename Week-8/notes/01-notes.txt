@@ -1,3 +1,6 @@
+# --
+@ContentView.swift  further refactor ContentView
+# --
 Reading `ContentView.swift` to identify further refactoring opportunities.
 
 

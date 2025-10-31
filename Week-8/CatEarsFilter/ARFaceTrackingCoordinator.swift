@@ -18,6 +18,11 @@ class ARFaceTrackingCoordinator: NSObject, ARSCNViewDelegate {
     var currentWhiskerLength: CGFloat = 0.04
     var currentWhiskerThickness: CGFloat = 0.0015
     
+    // Track original whisker rotations and indices for animation
+    private var whiskerBaseRotations: [SCNNode: SCNVector3] = [:]
+    private var whiskerIndices: [SCNNode: Int] = [:]
+    private var animationStartTime: TimeInterval = 0
+    
     weak var sceneView: ARSCNView? {
         didSet {
             // Set sceneView reference in capture manager when it's set
@@ -43,6 +48,17 @@ class ARFaceTrackingCoordinator: NSObject, ARSCNViewDelegate {
         
         // Update ear positions if needed
         updateEarPositions(node: node, faceAnchor: faceAnchor)
+    }
+    
+    // Called every frame - use this to animate whiskers
+    func renderer(_ renderer: SCNSceneRenderer, updateAtTime time: TimeInterval) {
+        // Initialize start time if needed
+        if animationStartTime == 0 {
+            animationStartTime = time
+        }
+        
+        // Update whisker animations
+        updateWhiskerAnimations(currentTime: time - animationStartTime)
     }
     
     private func addCatEars(to node: SCNNode, faceAnchor: ARFaceAnchor) {
@@ -125,6 +141,8 @@ class ARFaceTrackingCoordinator: NSObject, ARSCNViewDelegate {
     
     private func createWhiskersOnNode(_ node: SCNNode) {
         // Create 3 whiskers on each side (6 total)
+        var globalIndex = 0
+        
         // Left side whiskers - positioned on left cheek area
         for i in 0..<3 {
             let whisker = createWhisker()
@@ -136,6 +154,9 @@ class ARFaceTrackingCoordinator: NSObject, ARSCNViewDelegate {
             whisker.eulerAngles = SCNVector3(0, 0, degreesToRadians(-90))
             node.addChildNode(whisker)
             whiskerNodes.append(whisker)
+            // Add jiggle animation with slight variation per whisker
+            animateWhiskerJiggle(whisker, index: globalIndex, isLeft: true)
+            globalIndex += 1
         }
         
         // Right side whiskers - positioned on right cheek area
@@ -149,6 +170,50 @@ class ARFaceTrackingCoordinator: NSObject, ARSCNViewDelegate {
             whisker.eulerAngles = SCNVector3(0, 0, degreesToRadians(90))
             node.addChildNode(whisker)
             whiskerNodes.append(whisker)
+            // Add jiggle animation with slight variation per whisker
+            animateWhiskerJiggle(whisker, index: globalIndex, isLeft: false)
+            globalIndex += 1
+        }
+    }
+    
+    private func animateWhiskerJiggle(_ whisker: SCNNode, index: Int, isLeft: Bool) {
+        // Store the base rotation and index so we can add jiggle to it
+        whiskerBaseRotations[whisker] = whisker.eulerAngles
+        whiskerIndices[whisker] = index
+    }
+    
+    private func updateWhiskerAnimations(currentTime: TimeInterval) {
+        for whisker in whiskerNodes {
+            guard let baseRotation = whiskerBaseRotations[whisker],
+                  let index = whiskerIndices[whisker] else { continue }
+            
+            // Base amplitude (in degrees) - subtle rotation for gentle jiggle
+            let baseAmplitude: Float = 3.0
+            
+            // Vary amplitude slightly per whisker for more natural movement
+            let amplitudeVariation: Float = Float(index) * 0.4
+            let amplitudeDegrees = baseAmplitude + amplitudeVariation
+            let amplitudeRadians = Float(degreesToRadians(CGFloat(amplitudeDegrees)))
+            
+            // Vary timing slightly per whisker (1.0-1.4 seconds) for organic feel
+            let baseDuration: Double = 1.0 + Double(index) * 0.15
+            let phaseOffset: Double = Double(index) * 0.2 // Stagger the animation start
+            
+            // Calculate normalized time for sine wave
+            let normalizedTime = (currentTime / baseDuration) + phaseOffset
+            let sineValue = sin(normalizedTime * Double.pi * 2.0)
+            let cosineValue = cos(normalizedTime * Double.pi * 2.0)
+            
+            // Calculate rotation offsets
+            let yRotation = amplitudeRadians * 0.7 * Float(sineValue) // Vertical wobble (Y axis)
+            let zRotation = amplitudeRadians * 0.5 * Float(cosineValue) // Horizontal wobble (Z axis, offset by 90°)
+            
+            // Apply jiggle while preserving base rotation
+            whisker.eulerAngles = SCNVector3(
+                baseRotation.x,
+                baseRotation.y + yRotation,
+                baseRotation.z + zRotation
+            )
         }
     }
     
@@ -285,7 +350,11 @@ class ARFaceTrackingCoordinator: NSObject, ARSCNViewDelegate {
         guard let parent = leftEarNode?.parent else { return }
         
         // Remove old whiskers
-        whiskerNodes.forEach { $0.removeFromParentNode() }
+        whiskerNodes.forEach { 
+            whiskerBaseRotations.removeValue(forKey: $0)
+            whiskerIndices.removeValue(forKey: $0)
+            $0.removeFromParentNode() 
+        }
         whiskerNodes.removeAll()
         
         // Create new whiskers
