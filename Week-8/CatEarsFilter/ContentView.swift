@@ -11,6 +11,9 @@ class CatEarsViewModel {
     var rotationX: Double = 0.0  // Pitch (forward/backward tilt)
     var rotationY: Double = 0.0  // Yaw (left/right rotation)
     var rotationZ: Double = 30.0 // Roll (outward tilt) - default 30 degrees
+    var whiskerColor: Color = .gray
+    var whiskerLength: Double = 0.04
+    var whiskerThickness: Double = 0.0015
     var showingAlert = false
     var showCustomization = false
     var isRecording = false
@@ -44,6 +47,9 @@ class CatEarsViewModel {
             rotationX = 0.0
             rotationY = 0.0
             rotationZ = 30.0
+            whiskerColor = .gray
+            whiskerLength = 0.04
+            whiskerThickness = 0.0015
         }
     }
     
@@ -77,7 +83,10 @@ struct ContentView: View {
                 earThickness: $viewModel.earThickness,
                 rotationX: $viewModel.rotationX,
                 rotationY: $viewModel.rotationY,
-                rotationZ: $viewModel.rotationZ
+                rotationZ: $viewModel.rotationZ,
+                whiskerColor: $viewModel.whiskerColor,
+                whiskerLength: $viewModel.whiskerLength,
+                whiskerThickness: $viewModel.whiskerThickness
             )
             .edgesIgnoringSafeArea(.all)
             
@@ -100,6 +109,9 @@ struct ContentView: View {
                     rotationX: $viewModel.rotationX,
                     rotationY: $viewModel.rotationY,
                     rotationZ: $viewModel.rotationZ,
+                    whiskerColor: $viewModel.whiskerColor,
+                    whiskerLength: $viewModel.whiskerLength,
+                    whiskerThickness: $viewModel.whiskerThickness,
                     onReset: viewModel.resetToDefaults
                 )
             }

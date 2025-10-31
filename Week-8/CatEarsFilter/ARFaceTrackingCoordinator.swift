@@ -8,6 +8,7 @@ import UIKit
 class ARFaceTrackingCoordinator: NSObject, ARSCNViewDelegate {
     var leftEarNode: SCNNode?
     var rightEarNode: SCNNode?
+    var whiskerNodes: [SCNNode] = []
     var currentOuterColor: UIColor = .systemPink
     var currentInnerColor: UIColor = UIColor.systemPink.withAlphaComponent(0.6)
     var currentHeight: CGFloat = 0.06
@@ -16,6 +17,9 @@ class ARFaceTrackingCoordinator: NSObject, ARSCNViewDelegate {
     var currentRotationX: CGFloat = 0.0
     var currentRotationY: CGFloat = 0.0
     var currentRotationZ: CGFloat = 30.0
+    var currentWhiskerColor: UIColor = .gray
+    var currentWhiskerLength: CGFloat = 0.04
+    var currentWhiskerThickness: CGFloat = 0.0015
     
     weak var sceneView: ARSCNView?
     private var videoWriter: AVAssetWriter?
@@ -79,6 +83,9 @@ class ARFaceTrackingCoordinator: NSObject, ARSCNViewDelegate {
         
         // Create and add cat ears
         addCatEars(to: node, faceAnchor: faceAnchor)
+        
+        // Create and add whiskers
+        addWhiskers(to: node, faceAnchor: faceAnchor)
     }
     
     // Called when face anchor updates
@@ -159,12 +166,68 @@ class ARFaceTrackingCoordinator: NSObject, ARSCNViewDelegate {
         return earNode
     }
     
+    private func addWhiskers(to node: SCNNode, faceAnchor: ARFaceAnchor) {
+        // Clear existing whiskers
+        whiskerNodes.forEach { $0.removeFromParentNode() }
+        whiskerNodes.removeAll()
+        
+        createWhiskersOnNode(node)
+    }
+    
+    private func createWhiskersOnNode(_ node: SCNNode) {
+        // Create 3 whiskers on each side (6 total)
+        // Left side whiskers - positioned on left cheek area
+        for i in 0..<3 {
+            let whisker = createWhisker()
+            // Position on left cheek, vertically spaced around mouth/nose area
+            let verticalOffset = CGFloat(i - 1) * 0.012 // -0.012, 0, 0.012
+            // X: left side (-), Y: mouth/nose level (0.0-0.05), Z: slightly forward on cheek
+            whisker.position = SCNVector3(-0.055, 0.0 + Float(verticalOffset), 0.03)
+            // Rotate to point outward horizontally (cylinder extends along Y by default, rotate around Z to point in -X)
+            whisker.eulerAngles = SCNVector3(0, 0, degreesToRadians(-90))
+            node.addChildNode(whisker)
+            whiskerNodes.append(whisker)
+        }
+        
+        // Right side whiskers - positioned on right cheek area
+        for i in 0..<3 {
+            let whisker = createWhisker()
+            // Position on right cheek, vertically spaced around mouth/nose area
+            let verticalOffset = CGFloat(i - 1) * 0.012 // -0.012, 0, 0.012
+            // X: right side (+), Y: mouth/nose level (0.0-0.05), Z: slightly forward on cheek
+            whisker.position = SCNVector3(0.055, 0.0 + Float(verticalOffset), 0.03)
+            // Rotate to point outward horizontally (cylinder extends along Y by default, rotate around Z to point in +X)
+            whisker.eulerAngles = SCNVector3(0, 0, degreesToRadians(90))
+            node.addChildNode(whisker)
+            whiskerNodes.append(whisker)
+        }
+    }
+    
+    private func createWhisker() -> SCNNode {
+        // Create a cylinder for the whisker
+        let whiskerGeometry = SCNCylinder(
+            radius: currentWhiskerThickness,
+            height: currentWhiskerLength
+        )
+        
+        // Apply material
+        let material = SCNMaterial()
+        material.diffuse.contents = currentWhiskerColor
+        material.lightingModel = .physicallyBased
+        material.roughness.contents = 0.8 // Whiskers are slightly glossy
+        material.metalness.contents = 0.1
+        whiskerGeometry.materials = [material]
+        
+        let whiskerNode = SCNNode(geometry: whiskerGeometry)
+        return whiskerNode
+    }
+    
     private func updateEarPositions(node: SCNNode, faceAnchor: ARFaceAnchor) {
         // Ears remain relative to the face anchor, so they automatically follow the face
         // This method can be used for more advanced animations based on blend shapes
     }
     
-    func updateEarParameters(outerColor: UIColor, innerColor: UIColor, height: CGFloat, width: CGFloat, thickness: CGFloat, rotX: CGFloat, rotY: CGFloat, rotZ: CGFloat) {
+    func updateEarParameters(outerColor: UIColor, innerColor: UIColor, height: CGFloat, width: CGFloat, thickness: CGFloat, rotX: CGFloat, rotY: CGFloat, rotZ: CGFloat, whiskerColor: UIColor, whiskerLength: CGFloat, whiskerThickness: CGFloat) {
         // Check if parameters have changed
         let parametersChanged =
             height != currentHeight ||
@@ -178,6 +241,14 @@ class ARFaceTrackingCoordinator: NSObject, ARSCNViewDelegate {
             outerColor != currentOuterColor ||
             innerColor != currentInnerColor
         
+        // Check if whisker parameters have changed
+        let whiskerParamsChanged =
+            whiskerLength != currentWhiskerLength ||
+            whiskerThickness != currentWhiskerThickness
+        
+        let whiskerColorChanged =
+            whiskerColor != currentWhiskerColor
+        
         // Update stored values
         currentOuterColor = outerColor
         currentInnerColor = innerColor
@@ -187,6 +258,9 @@ class ARFaceTrackingCoordinator: NSObject, ARSCNViewDelegate {
         currentRotationX = rotX
         currentRotationY = rotY
         currentRotationZ = rotZ
+        currentWhiskerColor = whiskerColor
+        currentWhiskerLength = whiskerLength
+        currentWhiskerThickness = whiskerThickness
         
         // If dimensions or rotations changed, recreate the ears
         if parametersChanged {
@@ -194,6 +268,14 @@ class ARFaceTrackingCoordinator: NSObject, ARSCNViewDelegate {
         } else if colorsChanged {
             // Just update colors without recreating geometry
             updateEarColors()
+        }
+        
+        // If whisker dimensions changed, recreate whiskers
+        if whiskerParamsChanged {
+            recreateWhiskers()
+        } else if whiskerColorChanged {
+            // Just update whisker colors
+            updateWhiskerColors()
         }
     }
     
@@ -246,6 +328,27 @@ class ARFaceTrackingCoordinator: NSObject, ARSCNViewDelegate {
         
         if let rightInner = rightEarNode?.childNodes.first?.geometry as? SCNCone {
             rightInner.materials.first?.diffuse.contents = currentInnerColor
+        }
+    }
+    
+    private func recreateWhiskers() {
+        // Use the same parent as the ears (they should be on the same face node)
+        guard let parent = leftEarNode?.parent else { return }
+        
+        // Remove old whiskers
+        whiskerNodes.forEach { $0.removeFromParentNode() }
+        whiskerNodes.removeAll()
+        
+        // Create new whiskers
+        createWhiskersOnNode(parent)
+    }
+    
+    private func updateWhiskerColors() {
+        // Update all whisker colors
+        whiskerNodes.forEach { whiskerNode in
+            if let geometry = whiskerNode.geometry as? SCNCylinder {
+                geometry.materials.first?.diffuse.contents = currentWhiskerColor
+            }
         }
     }
     

@@ -13,6 +13,9 @@ struct ARFaceTrackingView: UIViewRepresentable {
     @Binding var rotationX: Double
     @Binding var rotationY: Double
     @Binding var rotationZ: Double
+    @Binding var whiskerColor: Color
+    @Binding var whiskerLength: Double
+    @Binding var whiskerThickness: Double
     
     func makeUIView(context: Context) -> ARSCNView {
         let sceneView = ARSCNView()
@@ -46,7 +49,10 @@ struct ARFaceTrackingView: UIViewRepresentable {
             thickness: CGFloat(earThickness),
             rotX: CGFloat(rotationX),
             rotY: CGFloat(rotationY),
-            rotZ: CGFloat(rotationZ)
+            rotZ: CGFloat(rotationZ),
+            whiskerColor: uiColor(from: whiskerColor),
+            whiskerLength: CGFloat(whiskerLength),
+            whiskerThickness: CGFloat(whiskerThickness)
         )
     }
     

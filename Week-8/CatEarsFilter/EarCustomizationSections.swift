@@ -128,3 +128,49 @@ struct RotationSectionView: View {
         .cornerRadius(12)
     }
 }
+
+// MARK: - WhiskerSectionView
+struct WhiskerSectionView: View {
+    @Binding var whiskerColor: Color
+    @Binding var whiskerLength: Double
+    @Binding var whiskerThickness: Double
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Whiskers")
+                .font(.headline)
+                .foregroundColor(.white)
+            
+            // Color Picker
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Color")
+                    .font(.caption)
+                    .foregroundColor(.white)
+                ColorPicker("", selection: $whiskerColor)
+                    .labelsHidden()
+                    .scaleEffect(1.3)
+            }
+            
+            // Length Slider
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Length: \(String(format: "%.3f", whiskerLength))")
+                    .font(.caption)
+                    .foregroundColor(.white)
+                Slider(value: $whiskerLength, in: 0.01...0.06, step: 0.005)
+                    .accentColor(.orange)
+            }
+            
+            // Thickness Slider
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Thickness: \(String(format: "%.4f", whiskerThickness))")
+                    .font(.caption)
+                    .foregroundColor(.white)
+                Slider(value: $whiskerThickness, in: 0.0005...0.002, step: 0.0001)
+                    .accentColor(.orange)
+            }
+        }
+        .padding()
+        .background(Color.white.opacity(0.1))
+        .cornerRadius(12)
+    }
+}

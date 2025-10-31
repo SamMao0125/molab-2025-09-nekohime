@@ -11,6 +11,9 @@ struct CustomizationPanelView: View {
     @Binding var rotationX: Double
     @Binding var rotationY: Double
     @Binding var rotationZ: Double
+    @Binding var whiskerColor: Color
+    @Binding var whiskerLength: Double
+    @Binding var whiskerThickness: Double
     let onReset: () -> Void
     
     var body: some View {
@@ -51,6 +54,12 @@ struct CustomizationPanelView: View {
                             rotationX: $rotationX,
                             rotationY: $rotationY,
                             rotationZ: $rotationZ
+                        )
+                        
+                        WhiskerSectionView(
+                            whiskerColor: $whiskerColor,
+                            whiskerLength: $whiskerLength,
+                            whiskerThickness: $whiskerThickness
                         )
                         
                         // Reset Button
