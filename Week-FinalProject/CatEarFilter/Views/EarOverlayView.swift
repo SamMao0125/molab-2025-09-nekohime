@@ -7,6 +7,7 @@ struct EarOverlayView: View {
     let zoom: CGFloat
     let offset: CGSize
     let onSelect: () -> Void
+    let onConfigChange: () -> Void
     
     @State private var dragStartLeft: CGPoint?
     @State private var dragStartRight: CGPoint?
@@ -26,13 +27,6 @@ struct EarOverlayView: View {
                 .rotationEffect(Angle(radians: Double(face.earConfig.leftRotation)))
                 .position(face.leftEarPosition)
                 .gesture(earDragGesture(isLeft: true))
-                .overlay(
-                    isSelected ? Circle()
-                        .stroke(Color.white, lineWidth: 2)
-                        .frame(width: 20, height: 20)
-                        .position(x: earSize.width / 2, y: 0)
-                    : nil
-                )
             
             // Right ear
             BeautifulEarShape(config: face.earConfig, isLeft: false)
@@ -47,19 +41,26 @@ struct EarOverlayView: View {
                 .rotationEffect(Angle(radians: Double(face.earConfig.syncRotation ? face.earConfig.leftRotation : face.earConfig.rightRotation)))
                 .position(face.rightEarPosition)
                 .gesture(earDragGesture(isLeft: false))
-                .overlay(
-                    isSelected ? Circle()
-                        .stroke(Color.white, lineWidth: 2)
-                        .frame(width: 20, height: 20)
-                        .position(x: earSize.width / 2, y: 0)
-                    : nil
-                )
+            
+            // Selection indicator
+            if isSelected {
+                Circle()
+                    .stroke(Color.yellow, lineWidth: 3)
+                    .frame(width: 30, height: 30)
+                    .position(face.leftEarPosition)
+            }
         }
-        // Force re-render when ANY config property changes
-        .id("\(face.earConfig.size)-\(face.earConfig.scaleWidth)-\(face.earConfig.scaleHeight)-\(face.earConfig.leftRotation)-\(face.earConfig.rightRotation)-\(face.earConfig.outerColor.red)-\(face.earConfig.outerColor.green)-\(face.earConfig.outerColor.blue)-\(face.earConfig.innerColor.red)-\(face.earConfig.innerColor.green)-\(face.earConfig.innerColor.blue)")
         .onTapGesture {
             onSelect()
         }
+        // iOS 16+ compatible onChange syntax (no initial: parameter)
+        .onChange(of: face.earConfig.size) { _ in onConfigChange() }
+        .onChange(of: face.earConfig.scaleWidth) { _ in onConfigChange() }
+        .onChange(of: face.earConfig.scaleHeight) { _ in onConfigChange() }
+        .onChange(of: face.earConfig.leftRotation) { _ in onConfigChange() }
+        .onChange(of: face.earConfig.rightRotation) { _ in onConfigChange() }
+        .onChange(of: face.earConfig.outerColor.red) { _ in onConfigChange() }
+        .onChange(of: face.earConfig.innerColor.red) { _ in onConfigChange() }
     }
     
     private var earSize: CGSize {

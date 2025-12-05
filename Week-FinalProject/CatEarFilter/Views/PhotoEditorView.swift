@@ -21,8 +21,6 @@ struct PhotoEditorView: View {
     @State private var currentOffset: CGSize = .zero
     @State private var totalOffset: CGSize = .zero
     
-    @State private var refreshTrigger = UUID()  // NEW - forces ear refresh!
-    
     @Environment(\.dismiss) var dismiss
     
     var body: some View {
@@ -55,9 +53,11 @@ struct PhotoEditorView: View {
                                 ),
                                 onSelect: {
                                     faceManager.selectFace(faceManager.faces[index].id)
+                                },
+                                onConfigChange: {
+                                    hasUnsavedChanges = true
                                 }
                             )
-                            .id(refreshTrigger)  // NEW - force refresh when trigger changes!
                         }
                     }
                     
@@ -186,16 +186,14 @@ struct PhotoEditorView: View {
             
             if showCustomization,
                let selectedIndex = faceManager.faces.firstIndex(where: { $0.id == faceManager.selectedFaceId }) {
-                CustomizationSheet(
-                    config: $faceManager.faces[selectedIndex].earConfig,
+                CustomizationSheetWrapper(
+                    config: faceManager.faces[selectedIndex].earConfig,
                     isPresented: $showCustomization,
-                    onSavePreset: {}
+                    onConfigChange: {
+                        hasUnsavedChanges = true
+                    }
                 )
                 .transition(.move(edge: .bottom))
-                .onChange(of: faceManager.faces[selectedIndex].earConfig) { oldValue, newValue in
-                    hasUnsavedChanges = true
-                    refreshTrigger = UUID()  // NEW - trigger ear refresh!
-                }
             }
             
             if isExporting {
@@ -332,6 +330,36 @@ struct PhotoEditorView: View {
                 }
             }
         )
+    }
+}
+
+// Wrapper to properly observe @Observable class changes - iOS 16 compatible
+struct CustomizationSheetWrapper: View {
+    var config: EarConfiguration  // Remove @Bindable
+    @Binding var isPresented: Bool
+    let onConfigChange: () -> Void
+    
+    var body: some View {
+        CustomizationSheet(
+            config: Binding(
+                get: { config },
+                set: { _ in }
+            ),
+            isPresented: $isPresented,
+            onSavePreset: {}
+        )
+        // iOS 16+ compatible onChange syntax
+        .onChange(of: config.size) { _ in onConfigChange() }
+        .onChange(of: config.scaleWidth) { _ in onConfigChange() }
+        .onChange(of: config.scaleHeight) { _ in onConfigChange() }
+        .onChange(of: config.leftRotation) { _ in onConfigChange() }
+        .onChange(of: config.rightRotation) { _ in onConfigChange() }
+        .onChange(of: config.outerColor.red) { _ in onConfigChange() }
+        .onChange(of: config.outerColor.green) { _ in onConfigChange() }
+        .onChange(of: config.outerColor.blue) { _ in onConfigChange() }
+        .onChange(of: config.innerColor.red) { _ in onConfigChange() }
+        .onChange(of: config.innerColor.green) { _ in onConfigChange() }
+        .onChange(of: config.innerColor.blue) { _ in onConfigChange() }
     }
 }
 
