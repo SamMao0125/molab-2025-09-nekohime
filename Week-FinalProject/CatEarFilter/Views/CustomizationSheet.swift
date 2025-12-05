@@ -9,17 +9,40 @@ struct CustomizationSheet: View {
     @State private var showSaveDialog = false
     @State private var presetName = ""
     
+    // Drag state
+    @State private var dragOffset: CGFloat = 0
+    @State private var currentHeight: CGFloat = UIScreen.main.bounds.height * 0.5
+    
+    // Height constraints
+    private let minHeight: CGFloat = UIScreen.main.bounds.height * 0.3
+    private let maxHeight: CGFloat = UIScreen.main.bounds.height * 0.85
+    private let defaultHeight: CGFloat = UIScreen.main.bounds.height * 0.5
+    
     var body: some View {
         VStack(spacing: 0) {
             Spacer()
             
             VStack(spacing: 0) {
-                // Handle bar
+                // Draggable handle bar
                 RoundedRectangle(cornerRadius: 2.5)
                     .fill(Color.white.opacity(0.3))
                     .frame(width: 40, height: 5)
                     .padding(.top, 12)
                     .padding(.bottom, 8)
+                    .gesture(
+                        DragGesture()
+                            .onChanged { value in
+                                let newHeight = currentHeight - value.translation.height
+                                dragOffset = value.translation.height
+                                
+                                if newHeight >= minHeight && newHeight <= maxHeight {
+                                    currentHeight = newHeight
+                                }
+                            }
+                            .onEnded { _ in
+                                dragOffset = 0
+                            }
+                    )
                 
                 // Header
                 HStack {
@@ -55,6 +78,15 @@ struct CustomizationSheet: View {
                             toggleSection(.position)
                         } content: {
                             PositionControls(config: $config)
+                        }
+                        
+                        CollapsibleSection(
+                            title: "Distance",
+                            isExpanded: expandedSections.contains(.distance)
+                        ) {
+                            toggleSection(.distance)
+                        } content: {
+                            DistanceControls(config: $config)
                         }
                         
                         CollapsibleSection(
@@ -102,14 +134,15 @@ struct CustomizationSheet: View {
                             OutlineControls(config: $config)
                         }
                     }
-                    .padding(.bottom, 20)
+                    .padding(.bottom, 100)
                 }
             }
-            .frame(maxHeight: UIScreen.main.bounds.height * 0.5)
+            .frame(height: currentHeight)
             .background(Color.black)
             .cornerRadius(20, corners: [.topLeft, .topRight])
         }
         .ignoresSafeArea()
+        .animation(.spring(response: 0.3, dampingFraction: 0.8), value: currentHeight)
     }
     
     private func toggleSection(_ section: CustomizationSection) {
@@ -122,7 +155,7 @@ struct CustomizationSheet: View {
 }
 
 enum CustomizationSection: Hashable {
-    case position, transform, colors, gradient, shadow, outline
+    case position, distance, transform, colors, gradient, shadow, outline
 }
 
 struct CollapsibleSection<Content: View>: View {
@@ -158,7 +191,6 @@ struct CollapsibleSection<Content: View>: View {
     }
 }
 
-// Position controls with X/Y sliders
 struct PositionControls: View {
     @Binding var config: EarConfiguration
     
@@ -188,18 +220,93 @@ struct PositionControls: View {
     }
 }
 
-// Transform controls with size and rotation
-struct TransformControls: View {
+struct DistanceControls: View {
     @Binding var config: EarConfiguration
     
     var body: some View {
         VStack(spacing: 16) {
             SliderControl(
-                label: "Size",
-                value: $config.size,
-                range: 0.5...2.0,
-                step: 0.01
+                label: "Ear Spacing",
+                value: $config.distance,
+                range: 0.04...0.15,
+                step: 0.001
             )
+            
+            HStack(spacing: 12) {
+                Button("Narrow") {
+                    config.distance = 0.06
+                }
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .background(Color.white.opacity(0.1))
+                .cornerRadius(8)
+                
+                Button("Normal") {
+                    config.distance = 0.08
+                }
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .background(Color.white.opacity(0.1))
+                .cornerRadius(8)
+                
+                Button("Wide") {
+                    config.distance = 0.11
+                }
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .background(Color.white.opacity(0.1))
+                .cornerRadius(8)
+            }
+        }
+    }
+}
+
+struct TransformControls: View {
+    @Binding var config: EarConfiguration
+    
+    var body: some View {
+        VStack(spacing: 16) {
+            Toggle("Lock Proportions", isOn: $config.lockScale)
+                .foregroundColor(.white)
+                .onChange(of: config.lockScale) { oldValue, newValue in
+                    if newValue {
+                        config.scaleWidth = config.size
+                        config.scaleHeight = config.size
+                    } else {
+                        config.scaleWidth = config.size
+                        config.scaleHeight = config.size
+                    }
+                }
+            
+            if config.lockScale {
+                SliderControl(
+                    label: "Size",
+                    value: $config.size,
+                    range: 0.5...2.0,
+                    step: 0.01
+                )
+                .onChange(of: config.size) { oldValue, newValue in
+                    config.scaleWidth = newValue
+                    config.scaleHeight = newValue
+                }
+            } else {
+                SliderControl(
+                    label: "Width",
+                    value: $config.scaleWidth,
+                    range: 0.5...2.0,
+                    step: 0.01
+                )
+                
+                SliderControl(
+                    label: "Height",
+                    value: $config.scaleHeight,
+                    range: 0.5...2.0,
+                    step: 0.01
+                )
+            }
             
             Toggle("Sync Rotation", isOn: $config.syncRotation)
                 .foregroundColor(.white)
@@ -244,12 +351,14 @@ struct TransformControls: View {
     
     private func resetTransform() {
         config.size = 1.0
+        config.scaleWidth = 1.0
+        config.scaleHeight = 1.0
+        config.lockScale = true
         config.leftRotation = 0.0
         config.rightRotation = 0.0
     }
 }
 
-// Reusable slider control
 struct SliderControl: View {
     let label: String
     @Binding var value: Float
@@ -277,7 +386,6 @@ struct SliderControl: View {
     }
 }
 
-// Corner radius extension for specific corners
 extension View {
     func cornerRadius(_ radius: CGFloat, corners: UIRectCorner) -> some View {
         clipShape(RoundedCorner(radius: radius, corners: corners))

@@ -10,22 +10,9 @@
 		24EFA4852ED04666001317AE /* CatEarFilter.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CatEarFilter.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
-/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		24EFA4D82ED04BD2001317AE /* Exceptions for "CatEarFilter" folder in "CatEarFilter" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Info.plist,
-			);
-			target = 24EFA4842ED04666001317AE /* CatEarFilter */;
-		};
-/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
-
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		24EFA4872ED04666001317AE /* CatEarFilter */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				24EFA4D82ED04BD2001317AE /* Exceptions for "CatEarFilter" folder in "CatEarFilter" target */,
-			);
 			path = CatEarFilter;
 			sourceTree = "<group>";
 		};

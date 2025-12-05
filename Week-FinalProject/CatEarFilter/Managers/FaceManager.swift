@@ -56,14 +56,41 @@ struct FaceWithEars: Identifiable {
         self.detectedFace = detectedFace
         self.earConfig = EarConfiguration()
         
-        // Initialize with suggested positions (will be updated based on actual image size)
+        // Initialize with zero positions (will be updated)
         self.leftEarPosition = .zero
         self.rightEarPosition = .zero
     }
     
-    mutating func updateEarPositions(for displaySize: CGSize) {
-        let suggested = detectedFace.suggestedEarPositions(for: displaySize)
-        self.leftEarPosition = suggested.left
-        self.rightEarPosition = suggested.right
+    mutating func updateEarPositions(for imageSize: CGSize) {
+        // Convert normalized bounding box to actual screen coordinates
+        let faceRect = CGRect(
+            x: detectedFace.boundingBox.origin.x * imageSize.width,
+            y: detectedFace.boundingBox.origin.y * imageSize.height,
+            width: detectedFace.boundingBox.width * imageSize.width,
+            height: detectedFace.boundingBox.height * imageSize.height
+        )
+        
+        // Calculate ear positions relative to face
+        let earOffsetX: CGFloat = faceRect.width * 0.4  // Ears 40% of face width from center
+        let earOffsetY: CGFloat = faceRect.height * 0.3  // Ears 30% above face center
+        
+        let faceCenterX = faceRect.midX
+        let faceCenterY = faceRect.midY
+        
+        // Position ears at the top corners of the face
+        leftEarPosition = CGPoint(
+            x: faceCenterX - earOffsetX,
+            y: faceCenterY - earOffsetY
+        )
+        
+        rightEarPosition = CGPoint(
+            x: faceCenterX + earOffsetX,
+            y: faceCenterY - earOffsetY
+        )
+        
+        print("📍 Updated ear positions for image size: \(imageSize)")
+        print("   Face rect: \(faceRect)")
+        print("   Left ear: \(leftEarPosition)")
+        print("   Right ear: \(rightEarPosition)")
     }
 }

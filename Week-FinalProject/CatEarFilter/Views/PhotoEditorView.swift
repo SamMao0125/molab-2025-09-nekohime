@@ -16,11 +16,12 @@ struct PhotoEditorView: View {
     @State private var showUnsavedChangesAlert = false
     @State private var hasUnsavedChanges = false
     
-    // Zoom and pan state
     @State private var currentZoom: CGFloat = 1.0
     @State private var totalZoom: CGFloat = 1.0
     @State private var currentOffset: CGSize = .zero
     @State private var totalOffset: CGSize = .zero
+    
+    @State private var refreshTrigger = UUID()  // NEW - forces ear refresh!
     
     @Environment(\.dismiss) var dismiss
     
@@ -30,7 +31,6 @@ struct PhotoEditorView: View {
             
             GeometryReader { geometry in
                 ZStack {
-                    // Photo with zoom and pan
                     Image(uiImage: image)
                         .resizable()
                         .aspectRatio(contentMode: .fit)
@@ -42,19 +42,11 @@ struct PhotoEditorView: View {
                         .gesture(photoZoomGesture)
                         .gesture(photoPanGesture)
                     
-                    // Ear overlays
                     if !faceDetector.isDetecting {
-                        ForEach(faceManager.faces) { face in
+                        ForEach(faceManager.faces.indices, id: \.self) { index in
                             EarOverlayView(
-                                face: Binding(
-                                    get: { face },
-                                    set: { newFace in
-                                        if let index = faceManager.faces.firstIndex(where: { $0.id == face.id }) {
-                                            faceManager.faces[index] = newFace
-                                        }
-                                    }
-                                ),
-                                isSelected: faceManager.selectedFaceId == face.id,
+                                face: $faceManager.faces[index],
+                                isSelected: faceManager.selectedFaceId == faceManager.faces[index].id,
                                 imageSize: geometry.size,
                                 zoom: currentZoom * totalZoom,
                                 offset: CGSize(
@@ -62,31 +54,38 @@ struct PhotoEditorView: View {
                                     height: currentOffset.height + totalOffset.height
                                 ),
                                 onSelect: {
-                                    faceManager.selectFace(face.id)
+                                    faceManager.selectFace(faceManager.faces[index].id)
                                 }
                             )
+                            .id(refreshTrigger)  // NEW - force refresh when trigger changes!
                         }
                     }
                     
-                    // Face detection overlay
                     if faceDetector.isDetecting {
                         LoadingView(message: "Detecting faces...")
                     }
                     
-                    if faceDetector.detectionFailed && showFaceDetectionMessage {
+                    if faceDetector.detectionFailed && showFaceDetectionMessage && faceManager.faces.isEmpty {
                         VStack {
                             Spacer()
                             
-                            Text("No face detected - manual placement available")
-                                .font(.system(size: 14))
-                                .foregroundColor(.white)
-                                .padding()
-                                .background(Color.black.opacity(0.7))
-                                .cornerRadius(12)
-                                .padding(.bottom, 100)
-                                .onTapGesture {
+                            HStack {
+                                Text("No face detected - tap 'Add Ears' button to place manually")
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.white)
+                                    .padding()
+                                    .background(Color.black.opacity(0.7))
+                                    .cornerRadius(12)
+                                
+                                Button(action: {
                                     showFaceDetectionMessage = false
+                                }) {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .foregroundColor(.white.opacity(0.7))
                                 }
+                            }
+                            .padding(.horizontal)
+                            .padding(.bottom, 100)
                         }
                     }
                 }
@@ -95,7 +94,6 @@ struct PhotoEditorView: View {
                 }
             }
             
-            // Top toolbar
             VStack {
                 HStack {
                     Button("Cancel") {
@@ -109,13 +107,24 @@ struct PhotoEditorView: View {
                     
                     Spacer()
                     
-                    if !faceManager.faces.isEmpty {
-                        Button(action: {
-                            addNewFace()
-                        }) {
+                    Text("Faces: \(faceManager.faces.count)")
+                        .foregroundColor(.white.opacity(0.7))
+                        .font(.system(size: 12))
+                    
+                    Spacer()
+                    
+                    Button(action: {
+                        addNewFace()
+                    }) {
+                        HStack(spacing: 4) {
                             Image(systemName: "plus.circle")
-                                .foregroundColor(.white)
+                            Text("Add Ears")
                         }
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(Color.blue)
+                        .cornerRadius(8)
                     }
                     
                     Button("Export") {
@@ -125,16 +134,15 @@ struct PhotoEditorView: View {
                     .disabled(faceManager.faces.isEmpty)
                 }
                 .padding()
-                .background(Color.black.opacity(0.5))
+                .background(Color.black.opacity(0.7))
                 
                 Spacer()
             }
             
-            // Bottom controls
             VStack {
                 Spacer()
                 
-                if let selectedFace = faceManager.selectedFace {
+                if faceManager.selectedFace != nil {
                     HStack(spacing: 20) {
                         Button(action: {
                             showCustomization.toggle()
@@ -159,7 +167,10 @@ struct PhotoEditorView: View {
                         }
                         
                         Button(action: {
-                            faceManager.removeFace(selectedFace.id)
+                            if let selectedId = faceManager.selectedFaceId {
+                                faceManager.removeFace(selectedId)
+                                hasUnsavedChanges = true
+                            }
                         }) {
                             Image(systemName: "trash")
                                 .font(.system(size: 24))
@@ -173,25 +184,20 @@ struct PhotoEditorView: View {
                 }
             }
             
-            // Customization sheet
-            if showCustomization, let selectedFace = faceManager.selectedFace {
+            if showCustomization,
+               let selectedIndex = faceManager.faces.firstIndex(where: { $0.id == faceManager.selectedFaceId }) {
                 CustomizationSheet(
-                    config: Binding(
-                        get: { selectedFace.earConfig },
-                        set: { newConfig in
-                            faceManager.updateEarConfiguration(for: selectedFace.id, config: newConfig)
-                            hasUnsavedChanges = true
-                        }
-                    ),
+                    config: $faceManager.faces[selectedIndex].earConfig,
                     isPresented: $showCustomization,
-                    onSavePreset: {
-                        // Save preset logic handled in sheet
-                    }
+                    onSavePreset: {}
                 )
                 .transition(.move(edge: .bottom))
+                .onChange(of: faceManager.faces[selectedIndex].earConfig) { oldValue, newValue in
+                    hasUnsavedChanges = true
+                    refreshTrigger = UUID()  // NEW - trigger ear refresh!
+                }
             }
             
-            // Export progress
             if isExporting {
                 ExportProgressView(progress: exportProgress)
             }
@@ -232,45 +238,72 @@ struct PhotoEditorView: View {
     }
     
     private func detectFaces(imageSize: CGSize) {
+        print("🔍 Starting face detection...")
+        
         faceDetector.detectFaces(in: image) {
-            if !faceDetector.detectedFaces.isEmpty {
-                for detectedFace in faceDetector.detectedFaces {
+            print("🔍 Detected faces: \(self.faceDetector.detectedFaces.count)")
+            
+            if !self.faceDetector.detectedFaces.isEmpty {
+                for detectedFace in self.faceDetector.detectedFaces {
                     var faceWithEars = FaceWithEars(detectedFace: detectedFace)
                     faceWithEars.updateEarPositions(for: imageSize)
-                    faceManager.faces.append(faceWithEars)
+                    self.faceManager.faces.append(faceWithEars)
+                    
+                    print("🟢 Added face with ears at: \(faceWithEars.leftEarPosition), \(faceWithEars.rightEarPosition)")
                 }
                 
-                faceManager.selectedFaceId = faceManager.faces.first?.id
-                showFaceDetectionMessage = false
+                self.faceManager.selectedFaceId = self.faceManager.faces.first?.id
+                self.showFaceDetectionMessage = false
+            } else {
+                print("⚠️ No faces detected")
             }
         }
     }
     
     private func addNewFace() {
-        // Add a new face with manual positioning
+        let displaySize = UIScreen.main.bounds.size
+        let centerX = displaySize.width / 2
+        let centerY = displaySize.height / 2
+        
         let newDetectedFace = DetectedFace(
             id: UUID(),
-            boundingBox: CGRect(x: 0.4, y: 0.4, width: 0.2, height: 0.2),
-            imageSize: image.size,
+            boundingBox: CGRect(x: 0.45, y: 0.45, width: 0.1, height: 0.1),
+            imageSize: displaySize,
             index: faceManager.faces.count
         )
-        faceManager.addFace(newDetectedFace)
+        
+        var newFace = FaceWithEars(detectedFace: newDetectedFace)
+        newFace.leftEarPosition = CGPoint(x: centerX - 60, y: centerY - 100)
+        newFace.rightEarPosition = CGPoint(x: centerX + 60, y: centerY - 100)
+        
+        faceManager.faces.append(newFace)
+        faceManager.selectedFaceId = newFace.id
         hasUnsavedChanges = true
+        
+        toastMessage = "Ears added! Drag to position"
+        showToast = true
     }
     
     private func resetEarPositions() {
-        guard let selectedFace = faceManager.selectedFace else { return }
+        guard let selectedId = faceManager.selectedFaceId,
+              let index = faceManager.faces.firstIndex(where: { $0.id == selectedId }) else { return }
         
-        // Reset to auto-detected position if available
-        toastMessage = "Positions reset to auto-detected values"
+        let displaySize = UIScreen.main.bounds.size
+        let centerX = displaySize.width / 2
+        let centerY = displaySize.height / 2
+        
+        faceManager.faces[index].leftEarPosition = CGPoint(x: centerX - 60, y: centerY - 100)
+        faceManager.faces[index].rightEarPosition = CGPoint(x: centerX + 60, y: centerY - 100)
+        
+        toastMessage = "Positions reset"
         showToast = true
+        hasUnsavedChanges = true
     }
     
     private func exportImage() {
         isExporting = true
         exportProgress = 0.0
         
-        // Use ImageExporter to combine image with ears
         let exporter = ImageExporter()
         
         exporter.exportImage(
@@ -285,11 +318,10 @@ struct PhotoEditorView: View {
                 switch result {
                 case .success(let exportedImage):
                     UIImageWriteToSavedPhotosAlbum(exportedImage, nil, nil, nil)
-                    toastMessage = "Saved to Photos"
+                    toastMessage = "Saved to Photos! 📸"
                     showToast = true
                     hasUnsavedChanges = false
                     
-                    // Dismiss after short delay
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
                         dismiss()
                     }

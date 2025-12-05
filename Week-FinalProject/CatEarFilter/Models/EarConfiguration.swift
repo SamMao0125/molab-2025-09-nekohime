@@ -10,9 +10,13 @@ class EarConfiguration: Identifiable {
     var xPosition: Float = 0.0
     var yPosition: Float = 0.0
     var zPosition: Float = 0.0
+    var distance: Float = 0.08
     
     // Transform
     var size: Float = 1.0
+    var lockScale: Bool = true
+    var scaleWidth: Float = 1.0
+    var scaleHeight: Float = 1.0
     var leftRotation: Float = 0.0
     var rightRotation: Float = 0.0
     var syncRotation: Bool = true
@@ -49,7 +53,6 @@ class EarConfiguration: Identifiable {
         self.innerColor = CodableColor(color: Color(white: 0.8))
     }
     
-    // Codable required initializer - MUST be in class body, not extension
     required init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decode(UUID.self, forKey: .id)
@@ -57,7 +60,11 @@ class EarConfiguration: Identifiable {
         xPosition = try container.decode(Float.self, forKey: .xPosition)
         yPosition = try container.decode(Float.self, forKey: .yPosition)
         zPosition = try container.decode(Float.self, forKey: .zPosition)
+        distance = try container.decodeIfPresent(Float.self, forKey: .distance) ?? 0.08
         size = try container.decode(Float.self, forKey: .size)
+        lockScale = try container.decodeIfPresent(Bool.self, forKey: .lockScale) ?? true
+        scaleWidth = try container.decodeIfPresent(Float.self, forKey: .scaleWidth) ?? 1.0
+        scaleHeight = try container.decodeIfPresent(Float.self, forKey: .scaleHeight) ?? 1.0
         leftRotation = try container.decode(Float.self, forKey: .leftRotation)
         rightRotation = try container.decode(Float.self, forKey: .rightRotation)
         syncRotation = try container.decode(Bool.self, forKey: .syncRotation)
@@ -77,14 +84,17 @@ class EarConfiguration: Identifiable {
         thumbnailData = try container.decodeIfPresent(Data.self, forKey: .thumbnailData)
     }
     
-    // For creating copies
     func copy() -> EarConfiguration {
         let config = EarConfiguration()
         config.name = self.name
         config.xPosition = self.xPosition
         config.yPosition = self.yPosition
         config.zPosition = self.zPosition
+        config.distance = self.distance
         config.size = self.size
+        config.lockScale = self.lockScale
+        config.scaleWidth = self.scaleWidth
+        config.scaleHeight = self.scaleHeight
         config.leftRotation = self.leftRotation
         config.rightRotation = self.rightRotation
         config.syncRotation = self.syncRotation
@@ -107,10 +117,10 @@ class EarConfiguration: Identifiable {
 }
 
 // MARK: - Codable Conformance
-extension EarConfiguration: Codable {
+extension EarConfiguration: Codable, Equatable {
     enum CodingKeys: String, CodingKey {
-        case id, name, xPosition, yPosition, zPosition
-        case size, leftRotation, rightRotation, syncRotation
+        case id, name, xPosition, yPosition, zPosition, distance
+        case size, lockScale, scaleWidth, scaleHeight, leftRotation, rightRotation, syncRotation
         case outerColor, innerColor, hasOutline, outlineColor, outlineWidth
         case useGradient, gradientStops, gradientAngle
         case shadowOpacity, shadowBlur, shadowOffsetX, shadowOffsetY
@@ -124,7 +134,11 @@ extension EarConfiguration: Codable {
         try container.encode(xPosition, forKey: .xPosition)
         try container.encode(yPosition, forKey: .yPosition)
         try container.encode(zPosition, forKey: .zPosition)
+        try container.encode(distance, forKey: .distance)
         try container.encode(size, forKey: .size)
+        try container.encode(lockScale, forKey: .lockScale)
+        try container.encode(scaleWidth, forKey: .scaleWidth)
+        try container.encode(scaleHeight, forKey: .scaleHeight)
         try container.encode(leftRotation, forKey: .leftRotation)
         try container.encode(rightRotation, forKey: .rightRotation)
         try container.encode(syncRotation, forKey: .syncRotation)
@@ -143,6 +157,22 @@ extension EarConfiguration: Codable {
         try container.encode(createdDate, forKey: .createdDate)
         try container.encode(thumbnailData, forKey: .thumbnailData)
     }
+    
+    // Equatable - MUST be inside the extension!
+    static func == (lhs: EarConfiguration, rhs: EarConfiguration) -> Bool {
+        return lhs.id == rhs.id &&
+               lhs.size == rhs.size &&
+               lhs.scaleWidth == rhs.scaleWidth &&
+               lhs.scaleHeight == rhs.scaleHeight &&
+               lhs.leftRotation == rhs.leftRotation &&
+               lhs.rightRotation == rhs.rightRotation &&
+               lhs.outerColor.red == rhs.outerColor.red &&
+               lhs.outerColor.green == rhs.outerColor.green &&
+               lhs.outerColor.blue == rhs.outerColor.blue &&
+               lhs.innerColor.red == rhs.innerColor.red &&
+               lhs.innerColor.green == rhs.innerColor.green &&
+               lhs.innerColor.blue == rhs.innerColor.blue
+    }
 }
 
 // Codable wrapper for SwiftUI Color
@@ -157,7 +187,6 @@ struct CodableColor: Codable {
     }
     
     init(color: Color) {
-        // Convert Color to components
         let uiColor = UIColor(color)
         var r: CGFloat = 0
         var g: CGFloat = 0
@@ -175,7 +204,7 @@ struct CodableColor: Codable {
 struct GradientStop: Codable, Identifiable {
     var id = UUID()
     var color: CodableColor
-    var position: Float // 0.0 to 1.0
+    var position: Float
     
     func copy() -> GradientStop {
         GradientStop(color: self.color, position: self.position)

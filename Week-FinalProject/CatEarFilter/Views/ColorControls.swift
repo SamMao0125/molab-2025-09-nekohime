@@ -2,46 +2,141 @@ import SwiftUI
 
 struct ColorControls: View {
     @Binding var config: EarConfiguration
-    @State private var showOuterColorPicker = false
-    @State private var showInnerColorPicker = false
     
     var body: some View {
-        VStack(spacing: 16) {
-            // Outer color
-            ColorPickerRow(
-                label: "Outer Color",
-                color: config.outerColor.color,
-                isPickerShowing: $showOuterColorPicker
-            )
-            
-            if showOuterColorPicker {
-                AdvancedColorPicker(
-                    selectedColor: Binding(
-                        get: { config.outerColor.color },
-                        set: { config.outerColor = CodableColor(color: $0) }
-                    )
-                )
+        VStack(spacing: 20) {
+            // Outer Ear Color Picker
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Outer Ear Color")
+                    .font(.system(size: 14))
+                    .foregroundColor(.white.opacity(0.7))
+                
+                ColorPicker("", selection: Binding(
+                    get: { config.outerColor.color },
+                    set: { config.outerColor = CodableColor(color: $0) }
+                ))
+                .labelsHidden()
+                .frame(height: 40)
             }
             
-            // Inner color
-            ColorPickerRow(
-                label: "Inner Color",
-                color: config.innerColor.color,
-                isPickerShowing: $showInnerColorPicker
-            )
+            Divider()
+                .background(Color.white.opacity(0.2))
             
-            if showInnerColorPicker {
-                AdvancedColorPicker(
-                    selectedColor: Binding(
-                        get: { config.innerColor.color },
-                        set: { config.innerColor = CodableColor(color: $0) }
-                    )
-                )
+            // Inner Ear Color Picker
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Inner Ear Color")
+                    .font(.system(size: 14))
+                    .foregroundColor(.white.opacity(0.7))
+                
+                ColorPicker("", selection: Binding(
+                    get: { config.innerColor.color },
+                    set: { config.innerColor = CodableColor(color: $0) }
+                ))
+                .labelsHidden()
+                .frame(height: 40)
+            }
+            
+            Divider()
+                .background(Color.white.opacity(0.2))
+            
+            // Quick Color Presets
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Quick Presets")
+                    .font(.system(size: 14))
+                    .foregroundColor(.white.opacity(0.7))
+                
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 12) {
+                        ColorPresetButton(
+                            outerColor: .gray,
+                            innerColor: Color(white: 0.8),
+                            label: "Classic"
+                        ) {
+                            config.outerColor = CodableColor(color: .gray)
+                            config.innerColor = CodableColor(color: Color(white: 0.8))
+                        }
+                        
+                        ColorPresetButton(
+                            outerColor: Color(red: 1.0, green: 0.75, blue: 0.8),
+                            innerColor: Color(red: 1.0, green: 0.4, blue: 0.6),
+                            label: "Pink"
+                        ) {
+                            config.outerColor = CodableColor(color: Color(red: 1.0, green: 0.75, blue: 0.8))
+                            config.innerColor = CodableColor(color: Color(red: 1.0, green: 0.4, blue: 0.6))
+                        }
+                        
+                        ColorPresetButton(
+                            outerColor: .black,
+                            innerColor: Color(white: 0.3),
+                            label: "Black"
+                        ) {
+                            config.outerColor = CodableColor(color: .black)
+                            config.innerColor = CodableColor(color: Color(white: 0.3))
+                        }
+                        
+                        ColorPresetButton(
+                            outerColor: .white,
+                            innerColor: Color(red: 1.0, green: 0.8, blue: 0.9),
+                            label: "White"
+                        ) {
+                            config.outerColor = CodableColor(color: .white)
+                            config.innerColor = CodableColor(color: Color(red: 1.0, green: 0.8, blue: 0.9))
+                        }
+                        
+                        ColorPresetButton(
+                            outerColor: Color(red: 1.0, green: 0.6, blue: 0.3),
+                            innerColor: Color(red: 1.0, green: 0.8, blue: 0.6),
+                            label: "Ginger"
+                        ) {
+                            config.outerColor = CodableColor(color: Color(red: 1.0, green: 0.6, blue: 0.3))
+                            config.innerColor = CodableColor(color: Color(red: 1.0, green: 0.8, blue: 0.6))
+                        }
+                        
+                        ColorPresetButton(
+                            outerColor: Color(red: 0.4, green: 0.26, blue: 0.13),
+                            innerColor: Color(red: 0.8, green: 0.6, blue: 0.4),
+                            label: "Brown"
+                        ) {
+                            config.outerColor = CodableColor(color: Color(red: 0.4, green: 0.26, blue: 0.13))
+                            config.innerColor = CodableColor(color: Color(red: 0.8, green: 0.6, blue: 0.4))
+                        }
+                    }
+                    .padding(.horizontal, 4)
+                }
             }
         }
     }
 }
 
+struct ColorPresetButton: View {
+    let outerColor: Color
+    let innerColor: Color
+    let label: String
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 6) {
+                ZStack {
+                    Circle()
+                        .fill(outerColor)
+                        .frame(width: 50, height: 50)
+                    
+                    Circle()
+                        .fill(innerColor)
+                        .frame(width: 25, height: 25)
+                }
+                
+                Text(label)
+                    .font(.system(size: 11))
+                    .foregroundColor(.white.opacity(0.7))
+            }
+            .frame(width: 70)
+        }
+    }
+}
+
+// This is needed by OutlineControls in ShadowControls.swift
 struct ColorPickerRow: View {
     let label: String
     let color: Color
@@ -67,152 +162,5 @@ struct ColorPickerRow: View {
                     )
             }
         }
-    }
-}
-
-struct AdvancedColorPicker: View {
-    @Binding var selectedColor: Color
-    @State private var hue: Double = 0.0
-    @State private var saturation: Double = 1.0
-    @State private var brightness: Double = 1.0
-    @State private var hexInput: String = ""
-    
-    var body: some View {
-        VStack(spacing: 16) {
-            // HSB Sliders
-            VStack(spacing: 12) {
-                ColorSlider(label: "Hue", value: $hue, range: 0...1) { value in
-                    updateColor()
-                }
-                
-                ColorSlider(label: "Saturation", value: $saturation, range: 0...1) { value in
-                    updateColor()
-                }
-                
-                ColorSlider(label: "Brightness", value: $brightness, range: 0...1) { value in
-                    updateColor()
-                }
-            }
-            
-            // Hex input
-            HStack {
-                Text("Hex")
-                    .font(.system(size: 14))
-                    .foregroundColor(.white.opacity(0.7))
-                
-                TextField("", text: $hexInput)
-                    .textFieldStyle(PlainTextFieldStyle())
-                    .foregroundColor(.white)
-                    .padding(8)
-                    .background(Color.white.opacity(0.1))
-                    .cornerRadius(8)
-                    .onChange(of: hexInput) { oldValue, newValue in
-                        if let color = Color(hex: newValue) {
-                            selectedColor = color
-                            extractHSB()
-                        }
-                    }
-            }
-        }
-        .padding()
-        .background(Color.white.opacity(0.05))
-        .cornerRadius(12)
-        .onAppear {
-            extractHSB()
-            updateHexInput()
-        }
-    }
-    
-    private func updateColor() {
-        selectedColor = Color(hue: hue, saturation: saturation, brightness: brightness)
-        updateHexInput()
-    }
-    
-    private func extractHSB() {
-        let uiColor = UIColor(selectedColor)
-        var h: CGFloat = 0
-        var s: CGFloat = 0
-        var b: CGFloat = 0
-        var a: CGFloat = 0
-        uiColor.getHue(&h, saturation: &s, brightness: &b, alpha: &a)
-        hue = Double(h)
-        saturation = Double(s)
-        brightness = Double(b)
-    }
-    
-    private func updateHexInput() {
-        hexInput = selectedColor.toHex()
-    }
-}
-
-struct ColorSlider: View {
-    let label: String
-    @Binding var value: Double
-    let range: ClosedRange<Double>
-    let onChange: (Double) -> Void
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text(label)
-                    .font(.system(size: 13))
-                    .foregroundColor(.white.opacity(0.6))
-                
-                Spacer()
-                
-                Text(String(format: "%.2f", value))
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(.white)
-                    .monospacedDigit()
-            }
-            
-            Slider(value: $value, in: range)
-                .tint(.white)
-                .onChange(of: value) { oldValue, newValue in
-                    onChange(newValue)
-                }
-        }
-    }
-}
-
-// Color extension for hex support
-extension Color {
-    init?(hex: String) {
-        let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
-        var int: UInt64 = 0
-        
-        guard Scanner(string: hex).scanHexInt64(&int) else { return nil }
-        
-        let a, r, g, b: UInt64
-        switch hex.count {
-        case 6: // RGB
-            (a, r, g, b) = (255, int >> 16, int >> 8 & 0xFF, int & 0xFF)
-        case 8: // ARGB
-            (a, r, g, b) = (int >> 24, int >> 16 & 0xFF, int >> 8 & 0xFF, int & 0xFF)
-        default:
-            return nil
-        }
-        
-        self.init(
-            .sRGB,
-            red: Double(r) / 255,
-            green: Double(g) / 255,
-            blue:  Double(b) / 255,
-            opacity: Double(a) / 255
-        )
-    }
-    
-    func toHex() -> String {
-        let uiColor = UIColor(self)
-        var r: CGFloat = 0
-        var g: CGFloat = 0
-        var b: CGFloat = 0
-        var a: CGFloat = 0
-        
-        uiColor.getRed(&r, green: &g, blue: &b, alpha: &a)
-        
-        let rgb: Int = (Int)(r*255)<<16 | (Int)(g*255)<<8 | (Int)(b*255)<<0
-        
-        return String(format: "%06X", rgb)
     }
 }

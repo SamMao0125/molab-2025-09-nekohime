@@ -8,8 +8,11 @@ struct PhotoLibraryView: View {
     @State private var showImagePicker = false
     @State private var photoAssets: [PHAsset] = []
     
+    // Better grid layout - 3 columns with spacing
     let columns = [
-        GridItem(.adaptive(minimum: 100), spacing: 2)
+        GridItem(.flexible(), spacing: 4),
+        GridItem(.flexible(), spacing: 4),
+        GridItem(.flexible(), spacing: 4)
     ]
     
     var body: some View {
@@ -18,20 +21,50 @@ struct PhotoLibraryView: View {
                 Color.black.ignoresSafeArea()
                 
                 if permissionManager.photoLibraryAuthorized {
-                    ScrollView {
-                        LazyVGrid(columns: columns, spacing: 2) {
-                            ForEach(photoAssets, id: \.localIdentifier) { asset in
-                                PhotoThumbnailView(asset: asset)
-                                    .aspectRatio(1, contentMode: .fill)
-                                    .onTapGesture {
-                                        loadFullImage(asset: asset)
-                                    }
+                    if photoAssets.isEmpty {
+                        EmptyLibraryView()
+                    } else {
+                        ScrollView {
+                            LazyVGrid(columns: columns, spacing: 4) {
+                                ForEach(photoAssets, id: \.localIdentifier) { asset in
+                                    PhotoThumbnailView(asset: asset)
+                                        .aspectRatio(1, contentMode: .fill)
+                                        .cornerRadius(4)
+                                        .onTapGesture {
+                                            loadFullImage(asset: asset)
+                                        }
+                                }
                             }
+                            .padding(4)
                         }
                     }
                 } else {
-                    ProgressView()
-                        .tint(.white)
+                    VStack(spacing: 20) {
+                        Image(systemName: "photo.on.rectangle.angled")
+                            .font(.system(size: 60))
+                            .foregroundColor(.white.opacity(0.5))
+                        
+                        Text("Photo Library Access Required")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(.white)
+                        
+                        Text("Please grant access to your photos in Settings")
+                            .font(.system(size: 14))
+                            .foregroundColor(.white.opacity(0.7))
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 40)
+                        
+                        Button("Open Settings") {
+                            if let url = URL(string: UIApplication.openSettingsURLString) {
+                                UIApplication.shared.open(url)
+                            }
+                        }
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 24)
+                        .padding(.vertical, 12)
+                        .background(Color.blue)
+                        .cornerRadius(12)
+                    }
                 }
             }
             .navigationTitle("Library")
@@ -80,7 +113,7 @@ struct PhotoLibraryView: View {
         options.deliveryMode = .highQualityFormat
         options.isNetworkAccessAllowed = true
         
-        // Request image at screen size for editing (will export at full res later)
+        // Request high quality image for editing
         let targetSize = CGSize(width: 2000, height: 2000)
         
         manager.requestImage(
@@ -101,19 +134,39 @@ struct PhotoLibraryView: View {
 struct PhotoThumbnailView: View {
     let asset: PHAsset
     @State private var image: UIImage?
+    @State private var isLoading = true
     
     var body: some View {
-        Group {
-            if let image = image {
-                Image(uiImage: image)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .clipped()
-            } else {
-                Rectangle()
-                    .fill(Color.gray.opacity(0.3))
+        GeometryReader { geometry in
+            Group {
+                if let image = image {
+                    Image(uiImage: image)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(width: geometry.size.width, height: geometry.size.width)
+                        .clipped()
+                } else if isLoading {
+                    ZStack {
+                        Rectangle()
+                            .fill(Color.gray.opacity(0.2))
+                        
+                        ProgressView()
+                            .tint(.white)
+                    }
+                    .frame(width: geometry.size.width, height: geometry.size.width)
+                } else {
+                    ZStack {
+                        Rectangle()
+                            .fill(Color.gray.opacity(0.3))
+                        
+                        Image(systemName: "photo")
+                            .foregroundColor(.white.opacity(0.5))
+                    }
+                    .frame(width: geometry.size.width, height: geometry.size.width)
+                }
             }
         }
+        .aspectRatio(1, contentMode: .fit)
         .onAppear {
             loadThumbnail()
         }
@@ -125,7 +178,7 @@ struct PhotoThumbnailView: View {
         options.isSynchronous = false
         options.deliveryMode = .opportunistic
         
-        let size = CGSize(width: 200, height: 200)
+        let size = CGSize(width: 300, height: 300)
         
         manager.requestImage(
             for: asset,
@@ -135,7 +188,26 @@ struct PhotoThumbnailView: View {
         ) { result, _ in
             DispatchQueue.main.async {
                 image = result
+                isLoading = false
             }
+        }
+    }
+}
+
+struct EmptyLibraryView: View {
+    var body: some View {
+        VStack(spacing: 20) {
+            Image(systemName: "photo.on.rectangle")
+                .font(.system(size: 60))
+                .foregroundColor(.white.opacity(0.5))
+            
+            Text("No Photos")
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundColor(.white)
+            
+            Text("Take some photos to get started!")
+                .font(.system(size: 14))
+                .foregroundColor(.white.opacity(0.7))
         }
     }
 }
